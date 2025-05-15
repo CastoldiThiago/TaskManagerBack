@@ -1,6 +1,7 @@
 package com.CastoldiThiago.TaskManager.service;
 
 import com.CastoldiThiago.TaskManager.dto.CreateTaskDTO;
+import com.CastoldiThiago.TaskManager.dto.TaskDTO;
 import com.CastoldiThiago.TaskManager.model.Task;
 import com.CastoldiThiago.TaskManager.model.TaskList;
 import com.CastoldiThiago.TaskManager.model.TaskStatus;
@@ -16,7 +17,9 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,51 +29,84 @@ public class TaskService {
     private final TaskListRepository taskListRepository;
 
 
-    public List<Task> getTasksByStatus(User user, TaskStatus status) {
-        return taskRepository.findAllByUserAndStatusOrderByDueDateAsc(user, status);
+    public List<TaskDTO> getTasksByStatus(User user, TaskStatus status) {
+        return taskRepository.findAllByUserAndStatusOrderByDueDateAsc(user, status)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getTasksByStatusAndDateRange(User user, TaskStatus status, LocalDateTime from, LocalDateTime to) {
-        return taskRepository.findAllByUserAndStatusAndDueDateBetweenOrderByDueDateAsc(user, status, from, to);
+    public List<TaskDTO> getTasksByStatusAndDateRange(User user, TaskStatus status, LocalDateTime from, LocalDateTime to) {
+        return taskRepository.findAllByUserAndStatusAndDueDateBetweenOrderByDueDateAsc(user, status, from, to)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getTasksByDateRange(User user, LocalDateTime from, LocalDateTime to) {
-        return taskRepository.findAllByUserAndDueDateBetweenOrderByDueDateAsc(user, from, to);
+    public List<TaskDTO> getTasksByDateRange(User user, LocalDateTime from, LocalDateTime to) {
+        return taskRepository.findAllByUserAndDueDateBetweenOrderByDueDateAsc(user, from, to)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getAllTasksOrderedByDueDate(User user) {
-        return taskRepository.findAllByUserOrderByDueDateAsc(user);
+    public List<TaskDTO> getAllTasksOrderedByDueDate(User user) {
+        return taskRepository.findAllByUserOrderByDueDateAsc(user)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getAllTasksByUser(User user) {
-        return taskRepository.findAllByUser(user);
+    public List<TaskDTO> getAllTasksByUser(User user) {
+
+        return taskRepository.findAllByUser(user)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getAllTasksByUserAndOrderedByCreatedAt(User user) {
-        return taskRepository.findAllByUserOrderByCreatedAtDesc(user);
+    public List<TaskDTO> getAllTasksByUserAndOrderedByCreatedAt(User user) {
+        return taskRepository.findAllByUserOrderByCreatedAtDesc(user)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getTasksByListId(Long taskListId, User user) {
+    public List<TaskDTO> getTasksByListId(Long taskListId, User user) {
         TaskList taskList = taskListRepository.findById(taskListId)
                 .orElseThrow(() -> new RuntimeException("Lista de tareas no encontrada."));
         if (!taskList.getOwner().equals(user)) {
             throw new AccessDeniedException("No tienes permiso sobre esta lista");
         }
-        return taskRepository.findAllByTaskList(taskList);
+        return taskRepository.findAllByTaskList(taskList)
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Task> getMyDayTasks(User user) {
+    public List<TaskDTO> getMyDayTasks(User user) {
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay(); // 00:00:00
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX); // 23:59:59.999999999
-        return taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
+        List<Task> todayTasks = taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
+        List<Task> myDayTasks = taskRepository.findAllByUserAndIsMyDayIsTrue(user);
+        List<Task> allMyDayTasks = new ArrayList<>(todayTasks);
+        for (Task task : myDayTasks) {
+            if (!allMyDayTasks.contains(task)) {
+                allMyDayTasks.add(task);
+            }
+        }
+        return allMyDayTasks
+                .stream()
+                .map(TaskDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public Task getTaskById(User user, Long taskId) {
-        return taskRepository.findByUserAndId(user, taskId);
+    public TaskDTO getTaskById(User user, Long taskId) {
+        return new TaskDTO(taskRepository.findByUserAndId(user, taskId));
     }
 
-    public Task createTask(CreateTaskDTO taskDTO, User user) {
+    public TaskDTO createTask(CreateTaskDTO taskDTO, User user) {
         TaskList taskList = taskListRepository.findById(taskDTO.getTaskListId())
                 .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
         // Asigna estado por defecto si no se especifica
@@ -88,8 +124,7 @@ public class TaskService {
                 .build();
 
         taskList.getTasks().add(task);
-
-        return taskRepository.save(task);
+        return new TaskDTO(taskRepository.save(task));
     }
 
     public void deleteTask(Long id, User user) {
@@ -100,7 +135,7 @@ public class TaskService {
         taskRepository.deleteById(id);
     }
 
-    public Task updateTask(Long taskId, CreateTaskDTO request, User user) {
+    public TaskDTO updateTask(Long taskId, CreateTaskDTO request, User user) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada"));
 
@@ -114,6 +149,10 @@ public class TaskService {
 
         if (request.getDescription() != null) {
             task.setDescription(request.getDescription());
+        }
+
+        if (request.getIsMyDay() != null) {
+            task.setIsMyDay(request.getIsMyDay());
         }
 
         if (request.getDueDate() != null) {
@@ -138,7 +177,7 @@ public class TaskService {
             newList.getTasks().add(task);
         }
 
-        return taskRepository.save(task);
+        return new TaskDTO(taskRepository.save(task));
     }
 
 }

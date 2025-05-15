@@ -16,4 +16,5 @@ public class CreateTaskDTO {
     private LocalDateTime dueDate;
     private TaskStatus status;
     private Long taskListId;
+    private Boolean isMyDay;
 }
