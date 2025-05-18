@@ -25,39 +25,26 @@ public class SecurityConfig {
 
     private final UnifiedAuthenticationFilter unifiedAuthenticationFilter; // Nuevo filtro unificado
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
 
     public SecurityConfig(UnifiedAuthenticationFilter unifiedAuthenticationFilter,
-                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-                          CustomOAuth2SuccessHandler customOAuth2SuccessHandler) {
+                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
         this.unifiedAuthenticationFilter = unifiedAuthenticationFilter; // Inyectamos el nuevo filtro
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
-        this.customOAuth2SuccessHandler = customOAuth2SuccessHandler;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Habilitar CORS
-                .csrf(AbstractHttpConfigurer::disable) // Deshabilitar CSRF para APIs REST
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/**", "/", "/oauth2/**").permitAll() // Permitir rutas públicas
-                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Permitir solicitudes OPTIONS para CORS
-                        .anyRequest().authenticated() // Proteger todas las demás rutas
-                )
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // Manejo de errores de autenticación
+                        .requestMatchers("/api/auth/**", "/auth/**", "/", "/oauth2/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // No usar sesiones
-                )
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customOAuth2SuccessHandler) // Manejo de éxito en OAuth2
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
-
-        // Reemplazar el filtro anterior con el filtro unificado
         http.addFilterBefore(unifiedAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 

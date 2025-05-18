@@ -43,9 +43,6 @@ public class UnifiedAuthenticationFilter extends OncePerRequestFilter {
             if (isJwtToken(token)) {
                 // Validar token JWT
                 handleJwtToken(token, request);
-            } else {
-                // Validar token de Google
-                handleGoogleToken(token);
             }
         } catch (ExpiredJwtException ex) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -68,32 +65,18 @@ public class UnifiedAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void handleJwtToken(String token, HttpServletRequest request) {
-        String username = null;
+        String email = null;
 
         if (jwtTokenProvider.validateToken(token)) {
-            username = jwtTokenProvider.getUsernameFromToken(token);
+            email = jwtTokenProvider.getEmailFromToken(token);
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    username, null, Collections.emptyList());
+                    email, null, Collections.emptyList());
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
-    }
-
-    private void handleGoogleToken(String token) throws Exception {
-        RestTemplate restTemplate = new RestTemplate();
-        String validationUrl = "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + token;
-
-        // Validar el token de Google
-        restTemplate.getForObject(validationUrl, Object.class);
-
-        // Si el token es válido, puedes configurar el contexto de seguridad si es necesario
-        // Por ejemplo, podrías extraer información del usuario desde el token y usarla
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                "googleUser", null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
 

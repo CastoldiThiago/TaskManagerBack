@@ -27,7 +27,7 @@ public class TaskController {
     // Obtiene todas las tareas del usuario ordenadas por fecha límite ascendente
     @GetMapping("/all")
     public ResponseEntity<List<TaskDTO>> getAllTasksOrderedByDueDate(Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getAllTasksOrderedByDueDate(user);
         return ResponseEntity.ok(tasks);
     }
@@ -36,7 +36,7 @@ public class TaskController {
     // Obtiene tareas por estado específico ordenadas por fecha límite ascendente
     @GetMapping("/filter/status/{status}")
     public ResponseEntity<List<TaskDTO>> getTasksByStatus(@PathVariable TaskStatus status, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getTasksByStatus(user, status);
         return ResponseEntity.ok(tasks);
     }
@@ -49,14 +49,14 @@ public class TaskController {
             @RequestParam LocalDateTime to,
             Principal principal) {
 
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getTasksByStatusAndDateRange(user, status, from, to);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/filter/dateRange")
     public ResponseEntity<List<TaskDTO>> getTasksByDateRange(Principal principal,  @RequestParam LocalDateTime from, @RequestParam LocalDateTime to) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getTasksByDateRange(user, from, to);
         return ResponseEntity.ok(tasks);
     }
@@ -64,7 +64,7 @@ public class TaskController {
     // Obtener las tareas del usuario ordenadas por la fecha de creación descendente
     @GetMapping("/recent")
     public ResponseEntity<List<TaskDTO>> getRecentTasks(Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getAllTasksByUserAndOrderedByCreatedAt(user);
         return ResponseEntity.ok(tasks);
     }
@@ -72,21 +72,21 @@ public class TaskController {
     // Obtener todas las tareas del usuario sin un orden específico
     @GetMapping
     public ResponseEntity<List<TaskDTO>> getAllTasksByUser(Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> tasks = taskService.getAllTasksByUser(user);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/my-day")
     public ResponseEntity<List<TaskDTO>> getMyDayTasks(Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         List<TaskDTO> myDayTasks = taskService.getMyDayTasks(user);
         return ResponseEntity.ok(myDayTasks);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         TaskDTO task = taskService.getTaskById(user, id);
         return ResponseEntity.ok(task);
     }
@@ -94,7 +94,7 @@ public class TaskController {
     @PostMapping
     public ResponseEntity<TaskDTO> createTask(@RequestBody CreateTaskDTO taskDTO,
                            Principal principal) {
-        User currentUser = userService.findByUsername(principal.getName());
+        User currentUser = userService.findByEmail(principal.getName());
         TaskDTO createdTask = taskService.createTask(taskDTO, currentUser);
         return ResponseEntity.ok(createdTask);
     }
@@ -102,7 +102,7 @@ public class TaskController {
     // Obtener todas las tareas de una lista específica
     @GetMapping("list/{taskListId}")
     public List<TaskDTO> getTasksByList(@PathVariable Long taskListId, Principal principal) {
-        User currentUser = userService.findByUsername(principal.getName());
+        User currentUser = userService.findByEmail(principal.getName());
         return taskService.getTasksByListId(taskListId, currentUser);
     }
 
@@ -112,7 +112,7 @@ public class TaskController {
                            @RequestBody CreateTaskDTO request,
                            @RequestParam(required = false) Long taskListId,
                            Principal principal) {
-        User currentUser = userService.findByUsername(principal.getName());
+        User currentUser = userService.findByEmail(principal.getName());
         TaskDTO updatedTask = taskService.updateTask(id, request, currentUser);
         return  ResponseEntity.ok(updatedTask);
     }
@@ -120,7 +120,7 @@ public class TaskController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+        User user = userService.findByEmail(principal.getName());
         taskService.deleteTask(id, user);
         return ResponseEntity.noContent().build();
     }

@@ -23,15 +23,12 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "El nombre de usuario no puede estar vacío")
-    @Size(max = USERNAME_MAX_LENGTH, message = "El nombre de usuario debe tener máximo {max} caracteres")
-    @Column(nullable = false, unique = true, length = USERNAME_MAX_LENGTH)
-    private String username;
 
-    @NotBlank(message = "La contraseña no puede estar vacía")
-    @Size(max = PASSWORD_MAX_LENGTH, message = "La contraseña debe tener máximo {max} caracteres")
-    @Column(nullable = false, length = PASSWORD_MAX_LENGTH)
+    @Column(nullable = true)
     private String password;
+
+    @NotBlank(message = "El nombre no puede estar vacío")
+    private String name;
 
     @NotBlank(message = "El email no puede estar vacío")
     @Email(message = "Debe ingresar un email válido")

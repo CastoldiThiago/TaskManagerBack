@@ -23,20 +23,20 @@ public class AuthService {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
-    public String login(String username, String password) {
+    public String login(String email, String password) {
         // Buscar el usuario por nombre de usuario
-        User user = userService.findByUsername(username);
+        User user = userService.findByEmail(email);
 
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             // Lanzar una excepción con un código 401 si el usuario no existe o la contraseña no es correcta
-            throw new BadCredentialsException("invalid username or password");
+            throw new BadCredentialsException("invalid email or password");
         }
         if (!user.isEnabled()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El correo electrónico no ha sido verificado.");
         }
 
         // Generar token JWT
-        return jwtTokenProvider.generateToken(user.getUsername());
+        return jwtTokenProvider.generateToken(user.getEmail());
     }
 
     public void register(User user) {

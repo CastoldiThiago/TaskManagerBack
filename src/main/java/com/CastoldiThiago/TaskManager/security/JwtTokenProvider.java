@@ -29,15 +29,15 @@ public class JwtTokenProvider {
     /**
      * Genera un token JWT para un usuario proporcionado.
      *
-     * @param username El nombre de usuario que se incluirá en el token.
+     * @param email El email del usuario que se incluirá en el token.
      * @return Token JWT generado.
      */
-    public String generateToken(String username) {
+    public String generateToken(String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
-                .setSubject(username) // El "subject" es el nombre de usuario
+                .setSubject(email) // El "subject" es el email
                 .setIssuedAt(now) // Fecha actual
                 .setExpiration(expiryDate) // Fecha de expiración
                 .signWith(secretKey, SignatureAlgorithm.HS512) // Firma con clave y algoritmo
@@ -74,18 +74,18 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Extrae el nombre de usuario (subject) del token JWT.
+     * Extrae el email (subject) del token JWT.
      *
      * @param token El token JWT.
-     * @return El nombre de usuario contenido en el token.
+     * @return El email contenido en el token.
      */
-    public String getUsernameFromToken(String token) {
+    public String getEmailFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(secretKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.getSubject(); // El "subject" contiene el nombre de usuario
+        return claims.getSubject(); // El "subject" contiene el email
     }
 }
 

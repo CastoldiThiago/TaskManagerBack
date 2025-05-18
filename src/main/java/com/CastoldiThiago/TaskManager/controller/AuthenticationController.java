@@ -27,7 +27,7 @@ public class AuthenticationController {
     public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
         try {
             // Lógica de autenticación
-            String token = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
+            String token = authService.login(loginRequest.getEmail(), loginRequest.getPassword());
             return ResponseEntity.ok(token);
         } catch (BadCredentialsException e) {
             // Devolver un 401 Unauthorized si las credenciales son incorrectas

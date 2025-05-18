@@ -26,15 +26,6 @@ public class UserService {
         this.passwordEncoder = new BCryptPasswordEncoder(); // Instanciamos el codificador
     }
 
-    /**
-     * Buscar usuario por username.
-     *
-     * @param username El nombre de usuario.
-     * @return El usuario encontrado, o vacío si no existe.
-     */
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username).orElse(null);
-    }
 
     /**
      * Registrar un nuevo usuario.
@@ -44,10 +35,6 @@ public class UserService {
      * @throws IllegalArgumentException si el username o email ya existen.
      */
     public void registerUser(User user) {
-        if (userRepository.existsByUsername(user.getUsername())) {
-            // Devolver un 409 Conflict si el nombre de usuario ya está en uso
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El nombre de usuario ya está en uso.");
-        }
 
         if (userRepository.existsByEmail(user.getEmail())) {
             // Devolver un 409 Conflict si el correo electrónico ya está en uso
@@ -77,12 +64,12 @@ public class UserService {
     /**
      * Validar credenciales para login.
      *
-     * @param username El nombre de usuario.
+     * @param email El nombre de usuario.
      * @param password La contraseña ingresada.
      * @return true si las credenciales son correctas, false si no lo son.
      */
-    public boolean validateCredentials(String username, String password) {
-        Optional<User> userOptional = userRepository.findByUsername(username);
+    public boolean validateCredentials(String email, String password) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
             return false;
