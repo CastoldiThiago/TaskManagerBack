@@ -2,6 +2,7 @@ package com.CastoldiThiago.TaskManager.service;
 
 import com.CastoldiThiago.TaskManager.dto.CreateTaskDTO;
 import com.CastoldiThiago.TaskManager.dto.TaskDTO;
+import com.CastoldiThiago.TaskManager.exception.ResourceNotFoundException;
 import com.CastoldiThiago.TaskManager.model.Task;
 import com.CastoldiThiago.TaskManager.model.TaskList;
 import com.CastoldiThiago.TaskManager.model.TaskStatus;
@@ -103,7 +104,9 @@ public class TaskService {
     }
 
     public TaskDTO getTaskById(User user, Long taskId) {
-        return new TaskDTO(taskRepository.findByUserAndId(user, taskId));
+        Task task = taskRepository.findByUserAndId(user, taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
+        return new TaskDTO(task);
     }
 
     public TaskDTO createTask(CreateTaskDTO taskDTO, User user) {

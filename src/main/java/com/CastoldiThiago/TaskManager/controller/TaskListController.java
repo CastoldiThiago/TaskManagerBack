@@ -1,5 +1,6 @@
 package com.CastoldiThiago.TaskManager.controller;
 
+import com.CastoldiThiago.TaskManager.dto.TaskDTO;
 import com.CastoldiThiago.TaskManager.dto.UpdateListRequest;
 import com.CastoldiThiago.TaskManager.model.Task;
 import com.CastoldiThiago.TaskManager.model.TaskList;
@@ -32,6 +33,13 @@ public class TaskListController {
     public List<TaskList> getLists(Principal principal) {
         User currentUser = userService.findByEmail(principal.getName());
         return taskListService.getAllListsByUser(currentUser);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskList> getTaskById(@PathVariable Long id) {
+        TaskList taskList = taskListService.getTaskListById(id);
+
+        return ResponseEntity.ok(taskList);
     }
 
     @DeleteMapping("/{id}")

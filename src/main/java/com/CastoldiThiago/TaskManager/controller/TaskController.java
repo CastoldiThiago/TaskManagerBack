@@ -88,6 +88,7 @@ public class TaskController {
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id, Principal principal) {
         User user = userService.findByEmail(principal.getName());
         TaskDTO task = taskService.getTaskById(user, id);
+        
         return ResponseEntity.ok(task);
     }
 

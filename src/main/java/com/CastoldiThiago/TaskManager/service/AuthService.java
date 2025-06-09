@@ -24,7 +24,7 @@ public class AuthService {
     }
 
     public String login(String email, String password) {
-        // Buscar el usuario por nombre de usuario
+        // Buscar el usuario por el mail
         User user = userService.findByEmail(email);
 
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
@@ -36,7 +36,7 @@ public class AuthService {
         }
 
         // Generar token JWT
-        return jwtTokenProvider.generateToken(user.getEmail());
+        return jwtTokenProvider.generateToken(user.getEmail(), user.getName());
     }
 
     public void register(User user) {

@@ -1,6 +1,8 @@
 package com.CastoldiThiago.TaskManager.service;
 
+import com.CastoldiThiago.TaskManager.dto.TaskDTO;
 import com.CastoldiThiago.TaskManager.dto.UpdateListRequest;
+import com.CastoldiThiago.TaskManager.exception.ResourceNotFoundException;
 import com.CastoldiThiago.TaskManager.model.Task;
 import com.CastoldiThiago.TaskManager.model.TaskList;
 import com.CastoldiThiago.TaskManager.model.User;
@@ -24,6 +26,11 @@ public class TaskListService {
         taskList.setOwner(owner);
         taskList.setCreatedAt(LocalDateTime.now());
         return taskListRepository.save(taskList);
+    }
+
+    public TaskList getTaskListById(Long taskListId) {
+        return taskListRepository.findById(taskListId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskListId));
     }
 
     public void deleteList(Long id, User owner) {

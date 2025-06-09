@@ -6,13 +6,15 @@ import com.CastoldiThiago.TaskManager.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.CastoldiThiago.TaskManager.model.TaskStatus;
 
+import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findAllByUser(User user);
 
-    Task findByUserAndId(User user, Long taskId);
+    Optional<Task> findByUserAndId(User user, Long taskId);
 
     List<Task> findAllByUserAndIsMyDayIsTrue(User user);
 

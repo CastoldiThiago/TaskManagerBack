@@ -32,12 +32,13 @@ public class JwtTokenProvider {
      * @param email El email del usuario que se incluirá en el token.
      * @return Token JWT generado.
      */
-    public String generateToken(String email) {
+    public String generateToken(String email, String name) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
                 .setSubject(email) // El "subject" es el email
+                .claim("name", name)
                 .setIssuedAt(now) // Fecha actual
                 .setExpiration(expiryDate) // Fecha de expiración
                 .signWith(secretKey, SignatureAlgorithm.HS512) // Firma con clave y algoritmo
