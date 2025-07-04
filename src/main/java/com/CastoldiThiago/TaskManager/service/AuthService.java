@@ -10,6 +10,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class AuthService {
 
@@ -23,7 +26,7 @@ public class AuthService {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
-    public String login(String email, String password) {
+    public List<String> login(String email, String password) {
         // Buscar el usuario por el mail
         User user = userService.findByEmail(email);
 
@@ -36,7 +39,12 @@ public class AuthService {
         }
 
         // Generar token JWT
-        return jwtTokenProvider.generateToken(user.getEmail(), user.getName());
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getName());
+        String refreshToken = jwtTokenProvider.generateToken(user.getEmail(), user.getPassword());
+        List<String> tokens = new ArrayList<>();
+        tokens.add(accessToken);
+        tokens.add(refreshToken);
+        return tokens;
     }
 
     public void register(User user) {

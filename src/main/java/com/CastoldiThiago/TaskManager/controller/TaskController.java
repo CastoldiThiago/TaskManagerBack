@@ -1,6 +1,8 @@
 package com.CastoldiThiago.TaskManager.controller;
+import com.CastoldiThiago.TaskManager.dto.ChangeTaskStatusRequest;
 import com.CastoldiThiago.TaskManager.dto.CreateTaskDTO;
 import com.CastoldiThiago.TaskManager.dto.TaskDTO;
+import com.CastoldiThiago.TaskManager.model.Task;
 import com.CastoldiThiago.TaskManager.model.TaskStatus;
 import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.service.TaskListService;
@@ -84,6 +86,13 @@ public class TaskController {
         return ResponseEntity.ok(myDayTasks);
     }
 
+    @PatchMapping("/move-to-my-day/{id}")
+    public ResponseEntity<TaskDTO> moveTaskToMyDay(@PathVariable Long id, Principal principal) {
+        User user = userService.findByEmail(principal.getName());
+        TaskDTO taskMoved = taskService.moveToMyDay(user, id);
+        return ResponseEntity.ok(taskMoved);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id, Principal principal) {
         User user = userService.findByEmail(principal.getName());
@@ -111,7 +120,6 @@ public class TaskController {
     @PatchMapping("/{id}")
     public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id,
                            @RequestBody CreateTaskDTO request,
-                           @RequestParam(required = false) Long taskListId,
                            Principal principal) {
         User currentUser = userService.findByEmail(principal.getName());
         TaskDTO updatedTask = taskService.updateTask(id, request, currentUser);
@@ -126,7 +134,15 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
-
+    // Actualizar tarea y opcionalmente cambiar su lista
+    @PatchMapping("/{id}/state")
+    public ResponseEntity<TaskDTO> changeStatus(@PathVariable Long id,
+                                              @RequestBody ChangeTaskStatusRequest request,
+                                              Principal principal) {
+        User currentUser = userService.findByEmail(principal.getName());
+        TaskDTO updatedTask = taskService.changeStatus(id, request.getState(), currentUser);
+        return  ResponseEntity.ok(updatedTask);
+    }
 
 
 }

@@ -16,7 +16,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     Optional<Task> findByUserAndId(User user, Long taskId);
 
-    List<Task> findAllByUserAndIsMyDayIsTrue(User user);
+    List<Task> findAllByUserAndMovedToMyDayIsTrue(User user);
 
     // Filtra por usuario y ordena por fecha de creación descendente
     List<Task> findAllByUserOrderByCreatedAtDesc(User user);

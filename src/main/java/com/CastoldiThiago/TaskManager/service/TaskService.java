@@ -90,17 +90,37 @@ public class TaskService {
         LocalDateTime startOfDay = today.atStartOfDay(); // 00:00:00
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX); // 23:59:59.999999999
         List<Task> todayTasks = taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
-        List<Task> myDayTasks = taskRepository.findAllByUserAndIsMyDayIsTrue(user);
+        List<Task> myDayTasksMoved = taskRepository.findAllByUserAndMovedToMyDayIsTrue(user);
+        List<Task> myDayTasksModified = new ArrayList<>();
         List<Task> allMyDayTasks = new ArrayList<>(todayTasks);
-        for (Task task : myDayTasks) {
+        for (Task task : myDayTasksMoved) {
+            if ( task.getMovedDate() != null && task.getMovedDate().isBefore(startOfDay)) {
+                task.setMovedToMyDay(false);
+                task.setMovedDate(null);
+                myDayTasksModified.add(task);
+                continue;
+            }
             if (!allMyDayTasks.contains(task)) {
                 allMyDayTasks.add(task);
             }
+        }
+        if (!myDayTasksModified.isEmpty()) {
+            taskRepository.saveAll(myDayTasksModified);
         }
         return allMyDayTasks
                 .stream()
                 .map(TaskDTO::new)
                 .collect(Collectors.toList());
+    }
+
+
+    public TaskDTO moveToMyDay(User user, Long taskId) {
+        LocalDateTime movedDate = LocalDateTime.now();
+        Task taskToMove = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found."));
+        taskToMove.setMovedToMyDay(true);
+        taskToMove.setMovedDate(movedDate);
+        return(new TaskDTO(taskRepository.save(taskToMove)));
     }
 
     public TaskDTO getTaskById(User user, Long taskId) {
@@ -110,8 +130,12 @@ public class TaskService {
     }
 
     public TaskDTO createTask(CreateTaskDTO taskDTO, User user) {
-        TaskList taskList = taskListRepository.findById(taskDTO.getTaskListId())
-                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+        TaskList taskList = null;
+        if (taskDTO.getListId() != null) {
+            taskList = taskListRepository.findById(taskDTO.getListId())
+                    .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+        }
+
         // Asigna estado por defecto si no se especifica
         if(taskDTO.getStatus() == null){
             taskDTO.setStatus(TaskStatus.TODO);
@@ -122,11 +146,15 @@ public class TaskService {
                 .description(taskDTO.getDescription())
                 .dueDate(taskDTO.getDueDate())
                 .status(taskDTO.getStatus())
+                .movedToMyDay(taskDTO.getMovedToMyDay())
+                .movedDate(taskDTO.getMovedDate())
                 .user(user)
                 .taskList(taskList)
                 .build();
 
-        taskList.getTasks().add(task);
+        if (taskList != null) {
+            taskList.getTasks().add(task);
+        };
         return new TaskDTO(taskRepository.save(task));
     }
 
@@ -154,8 +182,8 @@ public class TaskService {
             task.setDescription(request.getDescription());
         }
 
-        if (request.getIsMyDay() != null) {
-            task.setIsMyDay(request.getIsMyDay());
+        if (request.getMovedToMyDay() != null) {
+            task.setMovedToMyDay(request.getMovedToMyDay());
         }
 
         if (request.getDueDate() != null) {
@@ -166,8 +194,8 @@ public class TaskService {
             task.setStatus(request.getStatus());
         }
 
-        if (request.getTaskListId() != null && !request.getTaskListId().equals(task.getTaskList().getId())) {
-            TaskList newList = taskListRepository.findById(request.getTaskListId())
+        if (request.getListId() != null && !request.getListId().equals(task.getTaskList().getId())) {
+            TaskList newList = taskListRepository.findById(request.getListId())
                     .orElseThrow(() -> new RuntimeException("Nueva lista no encontrada"));
 
             // Eliminar de la lista actual (si es necesario)
@@ -180,6 +208,17 @@ public class TaskService {
             newList.getTasks().add(task);
         }
 
+        return new TaskDTO(taskRepository.save(task));
+    }
+
+    public TaskDTO changeStatus(Long taskId, TaskStatus taskStatus, User user) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Tarea no encontrada"));
+
+        if (!task.getUser().equals(user)) {
+            throw new AccessDeniedException("Unauthorized update attempt");
+        }
+        task.setStatus(taskStatus);
         return new TaskDTO(taskRepository.save(task));
     }
 

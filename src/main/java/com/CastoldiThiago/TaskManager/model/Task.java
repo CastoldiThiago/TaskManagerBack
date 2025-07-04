@@ -41,7 +41,10 @@ public class Task {
     private TaskStatus status;
 
     @Builder.Default
-    private Boolean isMyDay = false;
+    private Boolean movedToMyDay = false;
+
+    private LocalDateTime movedDate;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

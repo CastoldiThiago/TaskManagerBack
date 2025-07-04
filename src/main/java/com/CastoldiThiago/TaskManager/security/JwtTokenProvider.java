@@ -88,5 +88,13 @@ public class JwtTokenProvider {
                 .getBody();
         return claims.getSubject(); // El "subject" contiene el email
     }
+    public String getNameFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return (String) claims.get("name");
+    }
 }
 
