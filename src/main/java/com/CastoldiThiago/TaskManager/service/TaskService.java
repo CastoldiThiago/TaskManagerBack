@@ -87,12 +87,21 @@ public class TaskService {
 
     public List<TaskDTO> getMyDayTasks(User user) {
         LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = today.atStartOfDay(); // 00:00:00
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX); // 23:59:59.999999999
         List<Task> todayTasks = taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
         List<Task> myDayTasksMoved = taskRepository.findAllByUserAndMovedToMyDayIsTrue(user);
         List<Task> myDayTasksModified = new ArrayList<>();
+        for (Task task : todayTasks) {
+            if (task.getMovedToMyDay() == null || !task.getMovedToMyDay()) {
+                task.setMovedToMyDay(true);
+                task.setMovedDate(now);
+                myDayTasksModified.add(task);
+            }
+        }
         List<Task> allMyDayTasks = new ArrayList<>(todayTasks);
+
         for (Task task : myDayTasksMoved) {
             if ( task.getMovedDate() != null && task.getMovedDate().isBefore(startOfDay)) {
                 task.setMovedToMyDay(false);
@@ -186,15 +195,23 @@ public class TaskService {
             task.setMovedToMyDay(request.getMovedToMyDay());
         }
 
+        if (request.getMovedDate() != null) {
+            task.setMovedDate(request.getMovedDate());
+        }else if (task.getMovedDate() != null && !task.getMovedToMyDay()) {
+            task.setMovedDate(null);
+        }
+
         if (request.getDueDate() != null) {
             task.setDueDate(request.getDueDate());
+        }else if (task.getDueDate() != null) {
+            task.setDueDate(null);
         }
 
         if (request.getStatus() != null) {
             task.setStatus(request.getStatus());
         }
 
-        if (request.getListId() != null && !request.getListId().equals(task.getTaskList().getId())) {
+        if (request.getListId() != null) {
             TaskList newList = taskListRepository.findById(request.getListId())
                     .orElseThrow(() -> new RuntimeException("Nueva lista no encontrada"));
 
@@ -206,6 +223,8 @@ public class TaskService {
             // Establecer nueva relación
             task.setTaskList(newList);
             newList.getTasks().add(task);
+        } else if (task.getTaskList() != null) {
+            task.setTaskList(null);
         }
 
         return new TaskDTO(taskRepository.save(task));
