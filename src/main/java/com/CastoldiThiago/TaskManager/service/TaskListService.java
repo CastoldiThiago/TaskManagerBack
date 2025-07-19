@@ -1,6 +1,8 @@
 package com.CastoldiThiago.TaskManager.service;
 
 import com.CastoldiThiago.TaskManager.dto.TaskDTO;
+import com.CastoldiThiago.TaskManager.dto.TaskListCompleteDTO;
+import com.CastoldiThiago.TaskManager.dto.TaskListDTO;
 import com.CastoldiThiago.TaskManager.dto.UpdateListRequest;
 import com.CastoldiThiago.TaskManager.exception.ResourceNotFoundException;
 import com.CastoldiThiago.TaskManager.model.Task;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,15 +25,19 @@ public class TaskListService {
 
     private final TaskListRepository taskListRepository;
 
-    public TaskList createList(TaskList taskList, User owner) {
-        taskList.setOwner(owner);
-        taskList.setCreatedAt(LocalDateTime.now());
-        return taskListRepository.save(taskList);
+    public TaskListDTO createList(TaskListDTO taskList, User owner) {
+        TaskList newTaskList = new TaskList();
+        newTaskList.setName(taskList.getName());
+        newTaskList.setOwner(owner);
+        newTaskList.setDescription(taskList.getDescription());
+        newTaskList.setCreatedAt(LocalDateTime.now());
+        return new TaskListDTO(taskListRepository.save(newTaskList));
     }
 
-    public TaskList getTaskListById(Long taskListId) {
-        return taskListRepository.findById(taskListId)
+    public TaskListCompleteDTO getTaskListById(Long taskListId) {
+        TaskList taskList = taskListRepository.findById(taskListId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskListId));
+        return new TaskListCompleteDTO(taskList);
     }
 
     public void deleteList(Long id, User owner) {
@@ -44,11 +51,14 @@ public class TaskListService {
         taskListRepository.delete(list);
     }
 
-    public List<TaskList> getAllListsByUser(User owner) {
-        return taskListRepository.findAllByOwner(owner);
+    public List<TaskListDTO> getAllListsByUser(User owner) {
+        return taskListRepository.findAllByOwner(owner)
+                .stream()
+                .map(TaskListDTO::new)
+                .collect(Collectors.toList());
     }
 
-    public TaskList updateList(Long id, UpdateListRequest request, User owner) {
+    public TaskListDTO updateList(Long id, UpdateListRequest request, User owner) {
         TaskList taskList = taskListRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lista de tareas no encontrada"));
 
@@ -63,7 +73,7 @@ public class TaskListService {
         if (request.getDescription() != null) {
             taskList.setDescription(request.getDescription());
         }
-        return taskListRepository.save(taskList);
+        return new TaskListDTO(taskListRepository.save(taskList));
     }
 
 }

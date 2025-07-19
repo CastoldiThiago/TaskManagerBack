@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -94,11 +95,16 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id, Principal principal) {
+    public ResponseEntity<?> getTaskById(@PathVariable Long id, Principal principal) {
         User user = userService.findByEmail(principal.getName());
-        TaskDTO task = taskService.getTaskById(user, id);
-        
-        return ResponseEntity.ok(task);
+        Optional<Task> task = taskService.getTaskById(user, id);
+        if (task.isPresent()) {
+            Task taskLoaded = task.get();
+            return ResponseEntity.ok(new TaskDTO(taskLoaded));
+        }
+        else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping
@@ -128,10 +134,10 @@ public class TaskController {
 
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id, Principal principal) {
+    public ResponseEntity<?> deleteTask(@PathVariable Long id, Principal principal) {
         User user = userService.findByEmail(principal.getName());
         taskService.deleteTask(id, user);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(HttpStatus.OK);
     }
 
     // Actualizar tarea y opcionalmente cambiar su lista

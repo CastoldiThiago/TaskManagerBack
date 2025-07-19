@@ -13,7 +13,8 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final SecretKey secretKey;
-    private final long expirationTime; // Tiempo de expiración en milisegundos
+    private final long accessTokenExpirationTime;
+    private final long refreshTokenExpirationTime;
 
     // Constructor que carga los valores desde application.properties
     public JwtTokenProvider(@Value("${jwt.secret}") String secret,
@@ -23,7 +24,8 @@ public class JwtTokenProvider {
             throw new IllegalArgumentException("El valor de jwt.secret no cumple con el tamaño mínimo requerido de 256 bits.");
         }
         this.secretKey = Keys.hmacShaKeyFor(decodedKey);
-        this.expirationTime = expiration;
+        this.accessTokenExpirationTime = expiration;
+        this.refreshTokenExpirationTime = 7 * 24 * 60 * 60 * 1000L;
     }
 
     /**
@@ -32,17 +34,18 @@ public class JwtTokenProvider {
      * @param email El email del usuario que se incluirá en el token.
      * @return Token JWT generado.
      */
-    public String generateToken(String email, String name) {
+    public String generateToken(String email, String name, String type) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expirationTime);
+        Date expiryDate = new Date(now.getTime() + (type.equals("access") ? accessTokenExpirationTime : refreshTokenExpirationTime));
 
         return Jwts.builder()
-                .setSubject(email) // El "subject" es el email
+                .setSubject(email)
                 .claim("name", name)
-                .setIssuedAt(now) // Fecha actual
-                .setExpiration(expiryDate) // Fecha de expiración
-                .signWith(secretKey, SignatureAlgorithm.HS512) // Firma con clave y algoritmo
-                .compact(); // Generar el token
+                .claim("type", type)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(secretKey, SignatureAlgorithm.HS512)
+                .compact();
     }
 
     /**
@@ -95,6 +98,17 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
         return (String) claims.get("name");
+    }
+    public Claims getAllClaimsFromToken(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(secretKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (JwtException e) {
+            throw new RuntimeException("Token inválido o malformado", e);
+        }
     }
 }
 

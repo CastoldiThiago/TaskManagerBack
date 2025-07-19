@@ -8,9 +8,13 @@ import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -37,29 +41,42 @@ public class GoogleAuthController {
         if (request.getIdToken() == null || request.getIdToken().isBlank()) {
             return ResponseEntity.badRequest().body("El idToken es obligatorio");
         }
+
         try {
             GoogleIdToken idToken = googleIdTokenVerifier.verify(request.getIdToken());
 
             if (idToken != null) {
                 GoogleIdToken.Payload payload = idToken.getPayload();
                 String email = payload.getEmail();
-                System.out.println("Token válido. Email extraído: " + email);
 
                 User usuario = userRepository.findByEmail(email)
                         .orElseGet(() -> {
                             User nuevo = new User();
                             nuevo.setEmail(email);
                             nuevo.setName((String) payload.get("name"));
+                            nuevo.setEnabled(true); // ✔️ Importante si tenés lógica de validación por mail
                             return userRepository.save(nuevo);
                         });
 
-                String jwt = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName());
+                // ✔️ Generar tokens con tipo
+                String accessToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), "access");
+                String refreshToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), "refresh");
 
-                return ResponseEntity.ok(new JwtResponse(jwt));
+                // ✔️ Guardar refresh token en una cookie HttpOnly
+                ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                        .httpOnly(true)
+                        .path("/api/auth/refresh")
+                        .maxAge(Duration.ofDays(7))
+                        .build();
+
+                // ✔️ Devolver accessToken como JSON
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                        .body(new JwtResponse(accessToken));
             } else {
-                System.out.println("Token inválido para el clientId: " + googleClientId);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token de Google inválido");
             }
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

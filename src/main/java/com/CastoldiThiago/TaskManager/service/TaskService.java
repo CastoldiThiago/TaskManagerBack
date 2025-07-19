@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -132,10 +133,9 @@ public class TaskService {
         return(new TaskDTO(taskRepository.save(taskToMove)));
     }
 
-    public TaskDTO getTaskById(User user, Long taskId) {
-        Task task = taskRepository.findByUserAndId(user, taskId)
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
-        return new TaskDTO(task);
+    public Optional<Task> getTaskById(User user, Long taskId) {
+
+        return taskRepository.findByUserAndId(user, taskId);
     }
 
     public TaskDTO createTask(CreateTaskDTO taskDTO, User user) {
@@ -168,9 +168,9 @@ public class TaskService {
     }
 
     public void deleteTask(Long id, User user) {
-        Task task = taskRepository.findById(id).orElseThrow(() -> new RuntimeException("Tarea no encontrada."));
+        Task task = taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Tarea no encontrada."));
         if(!task.getUser().equals(user)){
-            throw new RuntimeException("No puedes eliminar tareas de otros usuarios.");
+            throw new AccessDeniedException("No puedes eliminar tareas de otros usuarios.");
         }
         taskRepository.deleteById(id);
     }

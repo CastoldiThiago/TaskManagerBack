@@ -1,4 +1,5 @@
 package com.CastoldiThiago.TaskManager.controller;
+import com.CastoldiThiago.TaskManager.dto.JwtResponse;
 import com.CastoldiThiago.TaskManager.dto.LoginRequest;
 import com.CastoldiThiago.TaskManager.dto.ResendCodeRequest;
 import com.CastoldiThiago.TaskManager.dto.VerificationRequest;
@@ -6,6 +7,7 @@ import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
 import com.CastoldiThiago.TaskManager.service.AuthService;
 import com.CastoldiThiago.TaskManager.service.UserService;
+import io.jsonwebtoken.Claims;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -33,28 +35,46 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
-            // Lógica de autenticación
+            // Autenticación y generación de tokens
             List<String> tokens = authService.login(loginRequest.getEmail(), loginRequest.getPassword());
-            String token = tokens.get(0);
+            String accessToken = tokens.get(0);
             String refreshToken = tokens.get(1);
+
+            // Crear cookie HttpOnly con el refresh token
             ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                     .httpOnly(true)
+                    .secure(true) // recomendado en producción con HTTPS
                     .path("/api/auth/refresh")
                     .maxAge(Duration.ofDays(7))
                     .build();
 
+            // Devolver accessToken como JSON, y refreshToken como cookie
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(token);
+                    .body(new JwtResponse(accessToken));
+
         } catch (BadCredentialsException e) {
-            // Devolver un 401 Unauthorized si las credenciales son incorrectas
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario o contraseña incorrectos.");
         } catch (RuntimeException e) {
-            // Manejar otros errores como solicitudes inválidas (400 Bad Request)
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        // Expira la cookie: maxAge = 0
+        ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/auth/refresh")
+                .maxAge(0) // <- elimina la cookie
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body("Sesión cerrada correctamente.");
     }
 
     @PostMapping("/register")
@@ -81,17 +101,22 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            return ResponseEntity.status(401).body("Refresh token inválido");
+    public ResponseEntity<?> refreshToken(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token inválido o no presente.");
         }
 
-        String email = jwtTokenProvider.getEmailFromToken(refreshToken);
-        String name = jwtTokenProvider.getNameFromToken(refreshToken);
+        Claims claims = jwtTokenProvider.getAllClaimsFromToken(refreshToken);
+        if (!"refresh".equals(claims.get("type"))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token no es de tipo refresh.");
+        }
 
-        String newAccessToken = jwtTokenProvider.generateToken(email, name);
+        String email = claims.getSubject();
+        String name = (String) claims.get("name");
 
-        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+        String newAccessToken = jwtTokenProvider.generateToken(email, name, "access");
+
+        return ResponseEntity.ok(new JwtResponse(newAccessToken));
     }
 
     @PostMapping("/resend")

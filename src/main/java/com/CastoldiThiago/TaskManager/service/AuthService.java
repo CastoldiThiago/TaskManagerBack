@@ -39,8 +39,8 @@ public class AuthService {
         }
 
         // Generar token JWT
-        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getName());
-        String refreshToken = jwtTokenProvider.generateToken(user.getEmail(), user.getPassword());
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getName(), "access");
+        String refreshToken = jwtTokenProvider.generateToken(user.getEmail(), user.getPassword(), "refresh");
         List<String> tokens = new ArrayList<>();
         tokens.add(accessToken);
         tokens.add(refreshToken);
