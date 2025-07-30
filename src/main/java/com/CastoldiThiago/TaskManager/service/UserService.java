@@ -1,5 +1,6 @@
 package com.CastoldiThiago.TaskManager.service;
 
+import com.CastoldiThiago.TaskManager.dto.TaskListDTO;
 import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.repository.UserRepository;
 import com.CastoldiThiago.TaskManager.util.EmailValidator;
@@ -19,6 +20,8 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder; // Para hashear contraseñas
     @Autowired
     private EmailService emailService;
+    @Autowired
+    private TaskListService taskListService;
 
     // Constructor para inyectar las dependencias
     public UserService(UserRepository userRepository) {
@@ -74,6 +77,9 @@ public class UserService {
             user.setEnabled(true); // Habilitar al usuario
             user.setVerificationCode(null); // Limpiar el código de verificación
             userRepository.save(user);
+            // crearle una lista inicial
+            TaskListDTO firstTaskList = new TaskListDTO(1,"First List", "This is your first tasks list");
+            taskListService.createList(firstTaskList, user);
             return true;
         } else {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El codigo de verificacion es incorrecto");
