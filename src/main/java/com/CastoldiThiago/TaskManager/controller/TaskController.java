@@ -117,16 +117,14 @@ public class TaskController {
     @GetMapping("list/{taskListId}")
     public List<TaskDTO> getTasksByList(@PathVariable Long taskListId, Principal principal) {
         User currentUser = userService.findByEmail(principal.getName());
-        return taskService.getTasksByListId(taskListId, currentUser);
+        return taskService.getTasksByListId(taskListId);
     }
 
     // Actualizar tarea y opcionalmente cambiar su lista
     @PatchMapping("/{id}")
     public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id,
-                           @RequestBody CreateTaskDTO request,
-                           Principal principal) {
-        User currentUser = userService.findByEmail(principal.getName());
-        TaskDTO updatedTask = taskService.updateTask(id, request, currentUser);
+                           @RequestBody CreateTaskDTO request) {
+        TaskDTO updatedTask = taskService.updateTask(id, request);
         return  ResponseEntity.ok(updatedTask);
     }
 

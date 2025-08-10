@@ -37,13 +37,9 @@ public class TaskListService {
         return new TaskListCompleteDTO(taskList);
     }
 
-    public void deleteList(Long id, User owner) {
+    public void deleteList(Long id) {
         TaskList list = taskListRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Lista no encontrada"));
-
-        if(!list.getOwner().equals(owner)){
-            throw new AccessDeniedException("No puedes eliminar listas de otro usuario");
-        }
 
         taskListRepository.delete(list);
     }
@@ -55,13 +51,9 @@ public class TaskListService {
                 .collect(Collectors.toList());
     }
 
-    public TaskListDTO updateList(Long id, UpdateListRequest request, User owner) {
+    public TaskListDTO updateList(Long id, UpdateListRequest request) {
         TaskList taskList = taskListRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lista de tareas no encontrada"));
-
-        if (!taskList.getOwner().equals(owner)) {
-            throw new AccessDeniedException("Unauthorized update attempt");
-        }
 
         if (request.getName() != null) {
             taskList.setName(request.getName());

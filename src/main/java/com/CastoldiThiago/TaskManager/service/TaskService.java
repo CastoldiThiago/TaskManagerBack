@@ -13,6 +13,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -73,12 +74,10 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
-    public List<TaskDTO> getTasksByListId(Long taskListId, User user) {
+    public List<TaskDTO> getTasksByListId(Long taskListId) {
         TaskList taskList = taskListRepository.findById(taskListId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lista de tareas no encontrada. Id: " + taskListId));
-        if (!taskList.getOwner().equals(user)) {
-            throw new AccessDeniedException("No tienes permiso sobre esta lista");
-        }
+
         return taskRepository.findAllByTaskList(taskList)
                 .stream()
                 .map(TaskDTO::new)
@@ -167,63 +166,59 @@ public class TaskService {
     }
 
     public void deleteTask(Long id, User user) {
-        Task task = taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Tarea no encontrada."));
-        if(!task.getUser().equals(user)){
-            throw new AccessDeniedException("No puedes eliminar tareas de otros usuarios.");
-        }
+        taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Tarea no encontrada."));
+
         taskRepository.deleteById(id);
     }
 
-    public TaskDTO updateTask(Long taskId, CreateTaskDTO request, User user) {
-        Task task = taskRepository.findById(taskId)
+    @Transactional
+    public TaskDTO updateTask(Long taskId, CreateTaskDTO request) {
+        // Traer la tarea con su lista ya cargada (evita queries extra)
+        Task task = taskRepository.findByIdWithList(taskId)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada"));
 
-        if (!task.getUser().equals(user)) {
-            throw new AccessDeniedException("Unauthorized update attempt");
-        }
 
-        if (request.getTitle() != null) {
-            task.setTitle(request.getTitle());
-        }
-
-        if (request.getDescription() != null) {
-            task.setDescription(request.getDescription());
-        }
+        // Actualizar campos básicos si se enviaron
+        if (request.getTitle() != null) task.setTitle(request.getTitle());
+        if (request.getDescription() != null) task.setDescription(request.getDescription());
 
         if (request.getMovedToMyDay() != null) {
             task.setMovedToMyDay(request.getMovedToMyDay());
-        }
-
-        if (request.getMovedDate() != null) {
-            task.setMovedDate(request.getMovedDate());
-        }else if (task.getMovedDate() != null && !task.getMovedToMyDay()) {
-            task.setMovedDate(null);
+            if (request.getMovedToMyDay()) {
+                task.setMovedDate(request.getMovedDate());
+            } else {
+                task.setMovedDate(null);
+            }
         }
 
         if (request.getDueDate() != null) {
             task.setDueDate(request.getDueDate());
-        }else if (task.getDueDate() != null) {
+        } else if (task.getDueDate() != null) {
             task.setDueDate(null);
         }
 
-        if (request.getStatus() != null) {
-            task.setStatus(request.getStatus());
-        }
+        if (request.getStatus() != null) task.setStatus(request.getStatus());
 
+        // Cambiar de lista si corresponde
         if (request.getListId() != null) {
-            TaskList newList = taskListRepository.findById(request.getListId())
+            TaskList newList = taskListRepository.findByIdWithTasks(request.getListId())
                     .orElseThrow(() -> new RuntimeException("Nueva lista no encontrada"));
 
-            // Eliminar de la lista actual (si es necesario)
+            // Si estaba en otra lista, eliminarla de ahí
             if (task.getTaskList() != null) {
                 task.getTaskList().getTasks().remove(task);
             }
 
-            // Establecer nueva relación
+            // Asociar con la nueva lista
             task.setTaskList(newList);
             newList.getTasks().add(task);
-        } else if (task.getTaskList() != null) {
-            task.setTaskList(null);
+
+        } else {
+            // Quitar de la lista si la sacaron
+            if (task.getTaskList() != null) {
+                task.getTaskList().getTasks().remove(task);
+                task.setTaskList(null);
+            }
         }
 
         return new TaskDTO(taskRepository.save(task));
@@ -233,9 +228,6 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada"));
 
-        if (!task.getUser().equals(user)) {
-            throw new AccessDeniedException("Unauthorized update attempt");
-        }
         task.setStatus(taskStatus);
         return new TaskDTO(taskRepository.save(task));
     }

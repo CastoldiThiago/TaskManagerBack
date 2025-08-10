@@ -5,6 +5,8 @@ import com.CastoldiThiago.TaskManager.model.TaskList;
 import com.CastoldiThiago.TaskManager.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.CastoldiThiago.TaskManager.model.TaskStatus;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,4 +38,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findAllByTaskList(TaskList taskList);
 
     List<Task> findAllByUserAndDueDateBetween(User user, LocalDateTime startOfToday, LocalDateTime endOfToday);
+
+    @Query("SELECT t FROM Task t JOIN FETCH t.user WHERE t.id = :id")
+    Optional<Task> findByIdWithUser(@Param("id") Long id);
+
+    @Query("SELECT t FROM Task t LEFT JOIN FETCH t.taskList WHERE t.id = :id")
+    Optional<Task> findByIdWithList(@Param("id") Long id);
 }

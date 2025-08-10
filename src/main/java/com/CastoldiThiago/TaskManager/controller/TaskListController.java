@@ -42,16 +42,14 @@ public class TaskListController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<HttpStatus> deleteList(@PathVariable Long id, Principal principal) {
-        User user = userService.findByEmail(principal.getName());
-        taskListService.deleteList(id, user);
+    public ResponseEntity<HttpStatus> deleteList(@PathVariable Long id) {
+        taskListService.deleteList(id);
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<TaskListDTO> updateList(@PathVariable Long id, @RequestBody UpdateListRequest request, Principal principal) {
-        User user = userService.findByEmail(principal.getName());
-        TaskListDTO updatedList = taskListService.updateList(id, request, user);
+    public ResponseEntity<TaskListDTO> updateList(@PathVariable Long id, @RequestBody UpdateListRequest request) {
+        TaskListDTO updatedList = taskListService.updateList(id, request);
         return ResponseEntity.ok(updatedList);
     }
 
