@@ -11,16 +11,13 @@ import com.CastoldiThiago.TaskManager.repository.TaskListRepository;
 import com.CastoldiThiago.TaskManager.repository.TaskRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -85,41 +82,55 @@ public class TaskService {
     }
 
     public List<TaskDTO> getMyDayTasks(User user) {
+
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = today.atStartOfDay(); // 00:00:00
-        LocalDateTime endOfDay = today.atTime(LocalTime.MAX); // 23:59:59.999999999
-        List<Task> todayTasks = taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
-        List<Task> myDayTasksMoved = taskRepository.findAllByUserAndMovedToMyDayIsTrue(user);
-        List<Task> myDayTasksModified = new ArrayList<>();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+
+        List<Task> todayTasks =
+                taskRepository.findAllByUserAndDueDateBetween(user, startOfDay, endOfDay);
+
+        List<Task> movedTasks =
+                taskRepository.findAllByUserAndMovedToMyDayIsTrue(user);
+
+        Map<Long, Task> myDayTasks = new LinkedHashMap<>();
+        List<Task> modified = new ArrayList<>();
+
+        // Tareas con vencimiento hoy
         for (Task task : todayTasks) {
-            if (task.getMovedToMyDay() == null || !task.getMovedToMyDay()) {
+            myDayTasks.put(task.getId(), task);
+
+            if (Boolean.FALSE.equals(task.getMovedToMyDay())) {
                 task.setMovedToMyDay(true);
                 task.setMovedDate(now);
-                myDayTasksModified.add(task);
+                modified.add(task);
             }
         }
-        List<Task> allMyDayTasks = new ArrayList<>(todayTasks);
 
-        for (Task task : myDayTasksMoved) {
-            if ( task.getMovedDate() != null && task.getMovedDate().isBefore(startOfDay)) {
+        // Tareas movidas manualmente
+        for (Task task : movedTasks) {
+
+            if (task.getMovedDate() != null && task.getMovedDate().isBefore(startOfDay)) {
                 task.setMovedToMyDay(false);
                 task.setMovedDate(null);
-                myDayTasksModified.add(task);
+                modified.add(task);
                 continue;
             }
-            if (!allMyDayTasks.contains(task)) {
-                allMyDayTasks.add(task);
-            }
+
+            myDayTasks.putIfAbsent(task.getId(), task);
         }
-        if (!myDayTasksModified.isEmpty()) {
-            taskRepository.saveAll(myDayTasksModified);
+
+        if (!modified.isEmpty()) {
+            taskRepository.saveAll(modified);
         }
-        return allMyDayTasks
+
+        return myDayTasks.values()
                 .stream()
                 .map(TaskDTO::new)
-                .collect(Collectors.toList());
+                .toList();
     }
+
 
 
     public TaskDTO moveToMyDay(User user, Long taskId) {
@@ -159,9 +170,6 @@ public class TaskService {
                 .taskList(taskList)
                 .build();
 
-        if (taskList != null) {
-            taskList.getTasks().add(task);
-        }
         return new TaskDTO(taskRepository.save(task));
     }
 
@@ -173,52 +181,34 @@ public class TaskService {
 
     @Transactional
     public TaskDTO updateTask(Long taskId, CreateTaskDTO request) {
-        // Traer la tarea con su lista ya cargada (evita queries extra)
-        Task task = taskRepository.findByIdWithList(taskId)
+
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada"));
 
-
-        // Actualizar campos básicos si se enviaron
+        // Campos básicos
         if (request.getTitle() != null) task.setTitle(request.getTitle());
         if (request.getDescription() != null) task.setDescription(request.getDescription());
+        if (request.getStatus() != null) task.setStatus(request.getStatus());
 
         if (request.getMovedToMyDay() != null) {
             task.setMovedToMyDay(request.getMovedToMyDay());
-            if (request.getMovedToMyDay()) {
-                task.setMovedDate(request.getMovedDate());
-            } else {
-                task.setMovedDate(null);
-            }
+            task.setMovedDate(request.getMovedToMyDay() ? request.getMovedDate() : null);
         }
 
         if (request.getDueDate() != null) {
             task.setDueDate(request.getDueDate());
-        } else if (task.getDueDate() != null) {
+        } else {
             task.setDueDate(null);
         }
 
-        if (request.getStatus() != null) task.setStatus(request.getStatus());
-
-        // Cambiar de lista si corresponde
+        // Cambio de lista
         if (request.getListId() != null) {
-            TaskList newList = taskListRepository.findByIdWithTasks(request.getListId())
-                    .orElseThrow(() -> new RuntimeException("Nueva lista no encontrada"));
+            TaskList newList = taskListRepository.findById(request.getListId())
+                    .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
 
-            // Si estaba en otra lista, eliminarla de ahí
-            if (task.getTaskList() != null) {
-                task.getTaskList().getTasks().remove(task);
-            }
-
-            // Asociar con la nueva lista
             task.setTaskList(newList);
-            newList.getTasks().add(task);
-
         } else {
-            // Quitar de la lista si la sacaron
-            if (task.getTaskList() != null) {
-                task.getTaskList().getTasks().remove(task);
-                task.setTaskList(null);
-            }
+            task.setTaskList(null);
         }
 
         return new TaskDTO(taskRepository.save(task));

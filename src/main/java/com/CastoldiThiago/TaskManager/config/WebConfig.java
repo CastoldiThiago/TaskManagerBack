@@ -10,7 +10,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**") // permite todos los endpoints
-                .allowedOrigins("https://taskmanagerfront-7cym.onrender.com") // URL frontend permitido
+                .allowedOrigins("http://localhost:5173/") // URL frontend permitido
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
