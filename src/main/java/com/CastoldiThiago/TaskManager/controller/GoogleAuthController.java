@@ -5,6 +5,7 @@ import com.CastoldiThiago.TaskManager.dto.JwtResponse;
 import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.repository.UserRepository;
 import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
+import com.CastoldiThiago.TaskManager.security.TokenType;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import org.springframework.http.HttpHeaders;
@@ -56,8 +57,8 @@ public class GoogleAuthController {
                         });
 
                 // Generar tokens con tipo
-                String accessToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), "access");
-                String refreshToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), "refresh");
+                String accessToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), TokenType.ACCESS);
+                String refreshToken = jwtTokenProvider.generateToken(usuario.getEmail(), usuario.getName(), TokenType.REFRESH);
 
                 // Guardar refresh token en una cookie HttpOnly
                 ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)

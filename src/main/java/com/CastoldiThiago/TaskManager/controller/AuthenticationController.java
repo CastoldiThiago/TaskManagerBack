@@ -5,9 +5,11 @@ import com.CastoldiThiago.TaskManager.dto.ResendCodeRequest;
 import com.CastoldiThiago.TaskManager.dto.VerificationRequest;
 import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
+import com.CastoldiThiago.TaskManager.security.TokenType;
 import com.CastoldiThiago.TaskManager.service.AuthService;
 import com.CastoldiThiago.TaskManager.service.UserService;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -37,7 +39,6 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        System.out.println("Login Request: " + loginRequest);
         try {
             // Autenticación y generación de tokens
             List<String> tokens = authService.login(loginRequest.getEmail(), loginRequest.getPassword());
@@ -47,7 +48,7 @@ public class AuthenticationController {
             // Crear cookie HttpOnly con el refresh token
             ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                     .httpOnly(true)
-                    .secure(true) // recomendado en producción con HTTPS
+                    .secure(false) // Hacer true en producción con HTTPS
                     .path("/api/auth/refresh")
                     .maxAge(Duration.ofDays(7))
                     .build();
@@ -69,7 +70,7 @@ public class AuthenticationController {
         // Expira la cookie: maxAge = 0
         ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)
                 .path("/api/auth/refresh")
                 .maxAge(0) // <- elimina la cookie
                 .build();
@@ -103,22 +104,35 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
-        if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token inválido o no presente.");
+    public ResponseEntity<?> refreshToken(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken
+    ) {
+        try {
+            if (refreshToken == null) {
+                throw new JwtException("Refresh token ausente");
+            }
+
+            jwtTokenProvider.validateToken(refreshToken);
+
+            if (jwtTokenProvider.getTokenType(refreshToken) != TokenType.REFRESH) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body("Token no es refresh");
+            }
+
+            String email = jwtTokenProvider.getEmail(refreshToken);
+            String name = jwtTokenProvider.getName(refreshToken);
+
+            String newAccessToken =
+                    jwtTokenProvider.generateToken(email, name, TokenType.ACCESS);
+
+            return ResponseEntity.ok(new JwtResponse(newAccessToken));
+
+        } catch (JwtException e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token inválido o expirado");
         }
-
-        Claims claims = jwtTokenProvider.getAllClaimsFromToken(refreshToken);
-        if (!"refresh".equals(claims.get("type"))) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token no es de tipo refresh.");
-        }
-
-        String email = claims.getSubject();
-        String name = (String) claims.get("name");
-
-        String newAccessToken = jwtTokenProvider.generateToken(email, name, "access");
-
-        return ResponseEntity.ok(new JwtResponse(newAccessToken));
     }
 
     @PostMapping("/resend")

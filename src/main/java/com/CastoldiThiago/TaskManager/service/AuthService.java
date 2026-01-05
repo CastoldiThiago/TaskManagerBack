@@ -2,6 +2,7 @@ package com.CastoldiThiago.TaskManager.service;
 
 import com.CastoldiThiago.TaskManager.model.User;
 import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
+import com.CastoldiThiago.TaskManager.security.TokenType;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,8 +38,8 @@ public class AuthService {
         }
 
         // Generar token JWT
-        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getName(), "access");
-        String refreshToken = jwtTokenProvider.generateToken(user.getEmail(), user.getPassword(), "refresh");
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getName(), TokenType.ACCESS);
+        String refreshToken = jwtTokenProvider.generateToken(user.getEmail(), user.getPassword(), TokenType.REFRESH);
         List<String> tokens = new ArrayList<>();
         tokens.add(accessToken);
         tokens.add(refreshToken);

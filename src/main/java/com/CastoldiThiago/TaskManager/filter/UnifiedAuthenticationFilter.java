@@ -2,6 +2,7 @@ package com.CastoldiThiago.TaskManager.filter;
 
 import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,56 +27,52 @@ public class UnifiedAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response,@NonNull FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
+
         String authHeader = request.getHeader("Authorization");
 
-        // Verifica que el header esté presente y tenga el formato correcto
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7); // Remover "Bearer "
+        String token = authHeader.substring(7);
 
         try {
-            if (isJwtToken(token)) {
-                // Validar token JWT
-                handleJwtToken(token, request);
-            }
-        } catch (ExpiredJwtException ex) {
+            jwtTokenProvider.validateToken(token);
+
+            String email = jwtTokenProvider.getEmail(token);
+            var authorities = jwtTokenProvider.getAuthorities(token);
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            email,
+                            null,
+                            authorities
+                    );
+
+            authentication.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } catch (ExpiredJwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Token expirado. Realiza login nuevamente.");
+            response.getWriter().write("Token expirado");
             return;
-        } catch (Exception ex) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("Token no válido.");
+        } catch (JwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Token inválido");
             return;
         }
 
-        // Continúa con la cadena de filtros
         filterChain.doFilter(request, response);
     }
 
-    private boolean isJwtToken(String token) {
-        // Lógica para determinar si el token es un JWT
-        // Por ejemplo, los tokens JWT suelen tener tres partes separadas por puntos (header.payload.signature)
-        return token.split("\\.").length == 3;
-    }
 
-    private void handleJwtToken(String token, HttpServletRequest request) {
-        String email = null;
-
-        if (jwtTokenProvider.validateToken(token)) {
-            email = jwtTokenProvider.getEmailFromToken(token);
-        }
-
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    email, null, Collections.emptyList());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
-    }
 }
 

@@ -3,112 +3,101 @@ package com.CastoldiThiago.TaskManager.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
 
-    private final SecretKey secretKey;
-    private final long accessTokenExpirationTime;
-    private final long refreshTokenExpirationTime;
+    private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_NAME = "name";
+    private static final String CLAIM_ROLES = "roles";
 
-    // Constructor que carga los valores desde application.properties
-    public JwtTokenProvider(@Value("${jwt.secret}") String secret,
-                            @Value("${jwt.expiration}") long expiration) {
+    private final SecretKey secretKey;
+    private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
+
+    public JwtTokenProvider(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration}") long accessExpiration
+    ) {
         byte[] decodedKey = Base64.getDecoder().decode(secret);
-        if (decodedKey.length < 32) { // Verifica el tamaño (256 bits = 32 bytes)
-            throw new IllegalArgumentException("El valor de jwt.secret no cumple con el tamaño mínimo requerido de 256 bits.");
+        if (decodedKey.length < 32) {
+            throw new IllegalArgumentException(
+                    "jwt.secret debe tener al menos 256 bits"
+            );
         }
+
         this.secretKey = Keys.hmacShaKeyFor(decodedKey);
-        this.accessTokenExpirationTime = expiration;
-        this.refreshTokenExpirationTime = 7 * 24 * 60 * 60 * 1000L;
+        this.accessTokenExpiration = accessExpiration;
+        this.refreshTokenExpiration = 7 * 24 * 60 * 60 * 1000L;
     }
 
-    /**
-     * Genera un token JWT para un usuario proporcionado.
-     *
-     * @param email El email del usuario que se incluirá en el token.
-     * @return Token JWT generado.
-     */
-    public String generateToken(String email, String name, String type) {
+    /* ===================== TOKEN GENERATION ===================== */
+
+    public String generateToken(String email, String name, TokenType type) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + (type.equals("access") ? accessTokenExpirationTime : refreshTokenExpirationTime));
+        Date expiry = new Date(
+                now.getTime() + (
+                        type == TokenType.ACCESS
+                                ? accessTokenExpiration
+                                : refreshTokenExpiration
+                )
+        );
 
         return Jwts.builder()
                 .setSubject(email)
-                .claim("name", name)
-                .claim("type", type)
+                .claim(CLAIM_NAME, name)
+                .claim(CLAIM_TYPE, type.name())
+                .claim(CLAIM_ROLES, List.of("ROLE_USER"))
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(secretKey, SignatureAlgorithm.HS512)
+                .setExpiration(expiry)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /**
-     * Valida el token JWT asegurándose de que es correcto y no ha expirado.
-     *
-     * @param token El token JWT a validar.
-     * @return true si el token es válido, de lo contrario lanza una excepción.
-     */
-    public boolean validateToken(String token) {
-        try {
-            // Intenta validar el token
-            Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
-        } catch (SecurityException ex) {
-            // Reemplaza el uso de SignatureException con SecurityException
-            System.out.println("Error en la firma del JWT: " + ex.getMessage());
-        } catch (MalformedJwtException ex) {
-            System.out.println("El token JWT está mal formado: " + ex.getMessage());
-        } catch (ExpiredJwtException ex) {
-            System.out.println("El token JWT ha expirado: " + ex.getMessage());
-        } catch (UnsupportedJwtException ex) {
-            System.out.println("El token JWT no es compatible: " + ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            System.out.println("El token JWT está vacío o es nulo: " + ex.getMessage());
-        }
-        return false;
+    /* ===================== VALIDATION ===================== */
+
+    public Claims parseClaims(String token) throws JwtException {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
-    /**
-     * Extrae el email (subject) del token JWT.
-     *
-     * @param token El token JWT.
-     * @return El email contenido en el token.
-     */
-    public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return claims.getSubject(); // El "subject" contiene el email
+    public void validateToken(String token) throws JwtException {
+        parseClaims(token); // si falla → excepción
     }
-    public String getNameFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return (String) claims.get("name");
+
+    /* ===================== EXTRACTION ===================== */
+
+    public String getEmail(String token) {
+        return parseClaims(token).getSubject();
     }
-    public Claims getAllClaimsFromToken(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (JwtException e) {
-            throw new RuntimeException("Token inválido o malformado", e);
-        }
+
+    public String getName(String token) {
+        return parseClaims(token).get(CLAIM_NAME, String.class);
+    }
+
+    public TokenType getTokenType(String token) {
+        return TokenType.valueOf(
+                parseClaims(token).get(CLAIM_TYPE, String.class)
+        );
+    }
+
+    public List<GrantedAuthority> getAuthorities(String token) {
+        List<String> roles = parseClaims(token).get("roles", List.class);
+
+        return roles.stream()
+                .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
+                .toList();
     }
 }
 
