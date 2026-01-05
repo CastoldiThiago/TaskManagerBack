@@ -48,7 +48,7 @@ public class AuthenticationController {
             // Crear cookie HttpOnly con el refresh token
             ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                     .httpOnly(true)
-                    .secure(false) // Hacer true en producción con HTTPS
+                    .secure(true) // Hacer true en producción con HTTPS
                     .path("/api/auth/refresh")
                     .maxAge(Duration.ofDays(7))
                     .build();
@@ -70,7 +70,7 @@ public class AuthenticationController {
         // Expira la cookie: maxAge = 0
         ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/api/auth/refresh")
                 .maxAge(0) // <- elimina la cookie
                 .build();
