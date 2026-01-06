@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
@@ -96,4 +97,11 @@ public class UserService {
         emailService.sendVerificationEmail(user.getEmail(), user.getVerificationCode());
     }
 
+    @Transactional // Vital para asegurar que se borre todo o nada
+    public void deleteAccountByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        userRepository.delete(user);
+    }
 }
