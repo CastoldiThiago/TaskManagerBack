@@ -8,8 +8,6 @@ import sibApi.TransactionalEmailsApi;
 import sibModel.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -21,34 +19,55 @@ public class EmailService {
     @Value("${brevo.sender.email}")
     private String fromEmail;
 
+    // Método específico para verificación
     public void sendVerificationEmail(String to, String code) {
-        // 1. Configurar cliente
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        ApiKeyAuth apiKeyAuth = (ApiKeyAuth) defaultClient.getAuthentication("api-key");
-        apiKeyAuth.setApiKey(apiKey);
+        String subject = "Verificación de Cuenta - Task Manager";
+        String htmlContent = "<html><body>" +
+                "<h1>Bienvenido</h1>" +
+                "<p>Tu código de verificación es: <strong>" + code + "</strong></p>" +
+                "</body></html>";
 
-        TransactionalEmailsApi apiInstance = new TransactionalEmailsApi();
-        SendSmtpEmail sendSmtpEmail = new SendSmtpEmail();
+        sendEmailInternal(to, subject, htmlContent);
+    }
 
-        // 2. Configurar Remitente
-        SendSmtpEmailSender sender = new SendSmtpEmailSender();
-        sender.setEmail(fromEmail);
-        sender.setName("Task Manager App");
-        sendSmtpEmail.setSender(sender);
+    // Método genérico
+    public void sendEmail(String to, String subject, String text) {
+        // Envolvemos el texto plano en HTML básico para que Brevo lo acepte bien
+        String htmlContent = "<html><body><p>" + text + "</p></body></html>";
 
-        // 3. Configurar Destinatario
-        SendSmtpEmailTo recipient = new SendSmtpEmailTo();
-        recipient.setEmail(to);
-        sendSmtpEmail.setTo(List.of(recipient));
+        sendEmailInternal(to, subject, htmlContent);
+    }
 
-        // 4. Contenido
-        sendSmtpEmail.setSubject("Verificación de Cuenta");
-        sendSmtpEmail.setHtmlContent("<html><body><h1>Tu código es: " + code + "</h1></body></html>");
-
-        // 5. Enviar
+    // Método privado para no repetir código de configuración de Brevo
+    private void sendEmailInternal(String to, String subject, String htmlContent) {
         try {
+            // 1. Configurar Cliente
+            ApiClient defaultClient = Configuration.getDefaultApiClient();
+            ApiKeyAuth apiKeyAuth = (ApiKeyAuth) defaultClient.getAuthentication("api-key");
+            apiKeyAuth.setApiKey(apiKey);
+
+            TransactionalEmailsApi apiInstance = new TransactionalEmailsApi();
+            SendSmtpEmail sendSmtpEmail = new SendSmtpEmail();
+
+            // 2. Remitente
+            SendSmtpEmailSender sender = new SendSmtpEmailSender();
+            sender.setEmail(fromEmail);
+            sender.setName("Task Manager App");
+            sendSmtpEmail.setSender(sender);
+
+            // 3. Destinatario
+            SendSmtpEmailTo recipient = new SendSmtpEmailTo();
+            recipient.setEmail(to);
+            sendSmtpEmail.setTo(List.of(recipient));
+
+            // 4. Contenido
+            sendSmtpEmail.setSubject(subject);
+            sendSmtpEmail.setHtmlContent(htmlContent);
+
+            // 5. Enviar
             CreateSmtpEmail result = apiInstance.sendTransacEmail(sendSmtpEmail);
-            System.out.println("Email enviado! ID: " + result.getMessageId());
+            System.out.println("Email enviado a " + to + ". ID: " + result.getMessageId());
+
         } catch (ApiException e) {
             System.err.println("Error enviando email: " + e.getResponseBody());
             e.printStackTrace();
