@@ -39,7 +39,7 @@ public class PasswordResetService {
 
         tokenRepository.save(resetToken);
 
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        String resetLink = "https://taskmanagerfront-absm.onrender.com/reset-password?token=" + token;
         emailService.sendEmail(user.getEmail(), "Restablecimiento de contraseña", "Haz clic en el enlace para restablecer tu contraseña: " + resetLink);
     }
 
