@@ -112,6 +112,11 @@
 			<artifactId>google-http-client-jackson2</artifactId>
 			<version>1.43.3</version> <!-- Verificá si hay una versión más nueva -->
 		</dependency>
+		<dependency>
+			<groupId>com.sendinblue</groupId>
+			<artifactId>sib-api-v3-sdk</artifactId>
+			<version>7.0.0</version>
+		</dependency>
 
 	</dependencies>
 
