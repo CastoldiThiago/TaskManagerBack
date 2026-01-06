@@ -1,6 +1,7 @@
 package com.CastoldiThiago.TaskManager.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -10,9 +11,12 @@ public class EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+    @Value("${spring.mail.username}")
+    private String remitente;
 
     public void sendVerificationEmail(String to, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(remitente);
         message.setTo(to);
         message.setSubject("Código de verificación");
         message.setText("Tu código de verificación es: " + code);
@@ -21,6 +25,7 @@ public class EmailService {
 
     public void sendEmail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(remitente);
         message.setTo(to);
         message.setSubject(subject);
         message.setText(text);
