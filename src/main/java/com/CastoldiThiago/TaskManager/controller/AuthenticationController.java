@@ -8,7 +8,6 @@ import com.CastoldiThiago.TaskManager.security.JwtTokenProvider;
 import com.CastoldiThiago.TaskManager.security.TokenType;
 import com.CastoldiThiago.TaskManager.service.AuthService;
 import com.CastoldiThiago.TaskManager.service.UserService;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -139,6 +138,11 @@ public class AuthenticationController {
     public ResponseEntity<String> resendCode(@RequestBody ResendCodeRequest resendCodeRequest){
        userService.resendVerificationCode(resendCodeRequest.getEmail());
        return ResponseEntity.ok("Correo enviado exitosamente.");
+    }
+
+    @GetMapping("/ping")
+    public String ping() {
+        return "pong";
     }
 }
 
